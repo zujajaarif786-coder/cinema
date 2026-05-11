@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StarPlex Cinema — Ticket Booking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07080e;
+      --surface:   #0e1018;
+      --surface2:  #151820;
+      --border:    #1e2235;
+      --border2:   #2a2f4a;
+      --text:      #e4e8ff;
+      --muted:     #525878;
+      --blue:      #4f7eff;
+      --blue-dim:  #1e3580;
+      --purple:    #8b5cf6;
+      --green:     #34d399;
+      --red:       #f87171;
+      --gold:      #fbbf24;
+      --radius:    18px;
+      --radius-sm: 10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated starfield ── */
+    .stars {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute; border-radius: 50%;
+      background: #fff; animation: twinkle var(--dur) ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: var(--min-op); transform: scale(1); }
+      50%       { opacity: var(--max-op); transform: scale(1.4); }
+    }
+
+    /* ── Page layout ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: 900px; margin: 0 auto;
+      padding: 0 1.5rem 6rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 4rem 1rem 3rem;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-size: .68rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--blue); border: 1px solid rgba(79,126,255,.3);
+      padding: .3rem 1rem; border-radius: 99px;
+      background: rgba(79,126,255,.06); margin-bottom: 1.4rem;
+    }
+    .hero-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.5rem, 12vw, 7rem);
+      line-height: .88; letter-spacing: .03em;
+      background: linear-gradient(140deg, #fff 0%, var(--blue) 45%, var(--purple) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      margin-top: 1rem; color: var(--muted);
+      font-size: .88rem; letter-spacing: .06em;
+    }
+
+    /* ── Section heading ── */
+    .sec-head {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem; letter-spacing: .12em; color: var(--muted);
+      text-transform: uppercase; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .7rem;
+    }
+    .sec-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Main card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 2.2rem;
+      box-shadow: 0 12px 50px rgba(0,0,20,.5);
+    }
+
+    /* ── Movie grid ── */
+    .movies-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: .75rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 600px) { .movies-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 380px) { .movies-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .movie-card {
+      position: relative; overflow: hidden;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem .6rem .9rem;
+      text-align: center; cursor: pointer;
+      background: var(--surface2);
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+    }
+    .movie-card::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(79,126,255,.18), rgba(139,92,246,.12));
+      opacity: 0; transition: opacity .2s;
+    }
+    .movie-card:hover { border-color: var(--blue); transform: translateY(-4px); box-shadow: 0 8px 28px rgba(79,126,255,.2); }
+    .movie-card:hover::after { opacity: 1; }
+    .movie-card.selected { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,126,255,.25); }
+    .movie-card.selected::after { opacity: 1; }
+
+    .movie-card .mc-emoji { font-size: 2rem; display: block; margin-bottom: .35rem; position: relative; z-index: 1; }
+    .movie-card .mc-name  { font-size: .7rem; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--text); position: relative; z-index: 1; line-height: 1.3; }
+    .movie-card .mc-price { font-size: .78rem; color: var(--blue); font-weight: 500; margin-top: .2rem; position: relative; z-index: 1; }
+    .movie-card .mc-genre { font-size: .62rem; color: var(--muted); margin-top: .1rem; position: relative; z-index: 1; }
+
+    /* ── Form ── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: .45rem; }
+    .field label {
+      font-size: .7rem; font-weight: 500; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .field select, .field input {
+      background: var(--surface2); border: 1.5px solid var(--border);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: .95rem;
+      padding: .78rem 1rem; border-radius: var(--radius-sm);
+      outline: none; transition: border-color .2s, box-shadow .2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23525878' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 1rem center;
+      background-color: var(--surface2); padding-right: 2.5rem; cursor: pointer;
+    }
+    .field select option { background: #151820; }
+    .field select:focus, .field input:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,126,255,.15);
+    }
+    .field input[type=number]::-webkit-inner-spin-button { opacity: .4; }
+
+    /* ── Discount pills ── */
+    .disc-strip { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.1rem; }
+    .disc-pill {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 99px; padding: .28rem .85rem;
+      font-size: .72rem; color: var(--muted);
+    }
+    .disc-pill strong { color: var(--text); font-weight: 500; }
+
+    /* ── Button ── */
+    .btn-book {
+      width: 100%; margin-top: 1.4rem;
+      padding: .9rem 1rem;
+      background: linear-gradient(135deg, var(--blue) 0%, #2952cc 100%);
+      color: #fff; border: none; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif; font-size: .92rem; font-weight: 500;
+      letter-spacing: .07em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(79,126,255,.35);
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-book:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(79,126,255,.5); }
+    .btn-book:active:not(:disabled) { transform: scale(.98); }
+    .btn-book:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Error alert ── */
+    .alert {
+      display: none; margin-top: 1rem; padding: .8rem 1.1rem;
+      border-radius: var(--radius-sm); font-size: .88rem;
+      align-items: center; gap: .6rem;
+    }
+    .alert.show { display: flex; animation: fadeUp .3s ease; }
+    .alert-err {
+      background: rgba(248,113,113,.08);
+      border: 1px solid rgba(248,113,113,.25);
+      color: #fca5a5;
+    }
+
+    /* ── Receipt / Ticket ── */
+    .receipt { display: none; margin-top: 1.8rem; }
+    .receipt.show { display: block; animation: fadeUp .45s ease; }
+
+    .ticket-wrap {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border2);
+      box-shadow: 0 16px 60px rgba(0,0,20,.6);
+    }
+
+    .ticket-top {
+      background: linear-gradient(135deg, #0c0f1f 0%, #111529 100%);
+      padding: 2rem 2.2rem 1.5rem;
+      display: flex; align-items: center; gap: 1.4rem;
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    .ticket-top::before {
+      content: ''; position: absolute;
+      top: -40px; right: -40px;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(79,126,255,.15) 0%, transparent 70%);
+    }
+    .ticket-top .big-emoji { font-size: 3.2rem; flex-shrink: 0; position: relative; z-index: 1; }
+    .ticket-top-text { position: relative; z-index: 1; }
+    .ticket-top-text .now-showing {
+      font-size: .62rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--blue); font-weight: 500;
+    }
+    .ticket-top-text h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem; letter-spacing: .05em; line-height: 1;
+      color: var(--text); margin-top: .1rem;
+    }
+    .ticket-top-text .sub { font-size: .8rem; color: var(--muted); margin-top: .3rem; }
+
+    /* Perforated divider */
+    .perf {
+      background: var(--surface2);
+      height: 22px; position: relative;
+      display: flex; align-items: center;
+    }
+    .perf::before, .perf::after {
+      content: ''; position: absolute;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--bg);
+    }
+    .perf::before { left: -11px; }
+    .perf::after  { right: -11px; }
+    .perf-line {
+      flex: 1; margin: 0 1.5rem; height: 1px;
+      background: repeating-linear-gradient(90deg, var(--border) 0, var(--border) 5px, transparent 5px, transparent 11px);
+    }
+
+    /* Ticket body */
+    .ticket-body { background: var(--surface); padding: 1.6rem 2.2rem 2rem; }
+
+    .t-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .55rem 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: .9rem;
+    }
+    .t-row:last-of-type { border-bottom: none; }
+    .t-row .lbl { color: var(--muted); }
+    .t-row .val { font-weight: 500; }
+    .t-row .val.discount { color: var(--green); }
+    .t-row .val.no-disc  { color: var(--muted); font-style: italic; font-weight: 300; }
+
+    .t-total {
+      margin-top: 1.3rem;
+      padding: 1.1rem 1.5rem;
+      background: linear-gradient(135deg, rgba(79,126,255,.1), rgba(139,92,246,.08));
+      border: 1.5px solid rgba(79,126,255,.25);
+      border-radius: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .t-total .t-lbl {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted); font-weight: 500;
+    }
+    .t-total .t-amount {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.6rem; letter-spacing: .04em;
+      color: var(--blue);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated starfield -->
+<div class="stars" id="stars"></div>
+
+<div class="page">
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      Project 2 · Movie Ticket Booking System
+    </div>
+    <h1>StarPlex<br>Cinema</h1>
+    <p class="hero-sub">Pick your movie &nbsp;·&nbsp; Choose tickets &nbsp;·&nbsp; Book instantly</p>
+  </header>
+
+  <!-- Booking card -->
+  <div class="card">
+    <p class="sec-head">Now Showing</p>
+
+    <!-- Movie grid -->
+    <div class="movies-grid" id="movies-grid">
+      <div class="movie-card" data-movie="Avengers">
+        <span class="mc-emoji">🦸</span>
+        <span class="mc-name">Avengers</span>
+        <span class="mc-price">₨600</span>
+        <span class="mc-genre">Action</span>
+      </div>
+      <div class="movie-card" data-movie="Frozen">
+        <span class="mc-emoji">❄️</span>
+        <span class="mc-name">Frozen</span>
+        <span class="mc-price">₨400</span>
+        <span class="mc-genre">Animation</span>
+      </div>
+      <div class="movie-card" data-movie="Batman">
+        <span class="mc-emoji">🦇</span>
+        <span class="mc-name">Batman</span>
+        <span class="mc-price">₨500</span>
+        <span class="mc-genre">Action</span>
+      </div>
+      <div class="movie-card" data-movie="SpiderMan">
+        <span class="mc-emoji">🕷️</span>
+        <span class="mc-name">SpiderMan</span>
+        <span class="mc-price">₨550</span>
+        <span class="mc-genre">Superhero</span>
+      </div>
+      <div class="movie-card" data-movie="Minions">
+        <span class="mc-emoji">💛</span>
+        <span class="mc-name">Minions</span>
+        <span class="mc-price">₨350</span>
+        <span class="mc-genre">Comedy</span>
+      </div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="form-row">
+      <div class="field">
+        <label for="sel-movie">Selected Movie</label>
+        <select id="sel-movie">
+          <option value="">— Choose from above —</option>
+          <option value="Avengers">Avengers</option>
+          <option value="Frozen">Frozen</option>
+          <option value="Batman">Batman</option>
+          <option value="SpiderMan">SpiderMan</option>
+          <option value="Minions">Minions</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sel-tickets">Number of Tickets</label>
+        <input type="number" id="sel-tickets" min="1" max="20" placeholder="e.g.  3" />
+      </div>
+    </div>
+
+    <!-- Discount info -->
+    <div class="disc-strip">
+      <div class="disc-pill">5 + tickets → <strong>15% off</strong></div>
+      <div class="disc-pill">3 – 4 tickets → <strong>10% off</strong></div>
+      <div class="disc-pill">1 – 2 tickets → <strong>No discount</strong></div>
+    </div>
+
+    <!-- Submit -->
+    <button class="btn-book" id="btn-book">🎟&nbsp; Book Tickets</button>
+
+    <!-- Error -->
+    <div class="alert alert-err" id="err-box">
+      <span>⚠</span><span id="err-msg"></span>
+    </div>
+  </div>
+
+  <!-- Receipt -->
+  <div class="receipt" id="receipt">
+    <div class="ticket-wrap">
+      <div class="ticket-top">
+        <span class="big-emoji" id="r-emoji">🎬</span>
+        <div class="ticket-top-text">
+          <span class="now-showing">Now Showing</span>
+          <h2 id="r-title">—</h2>
+          <p class="sub" id="r-sub">—</p>
+        </div>
+      </div>
+      <div class="perf"><div class="perf-line"></div></div>
+      <div class="ticket-body">
+        <div class="t-row"><span class="lbl">Movie</span>          <span class="val" id="r-movie">—</span></div>
+        <div class="t-row"><span class="lbl">Ticket Price</span>   <span class="val" id="r-unit">—</span></div>
+        <div class="t-row"><span class="lbl">No. of Tickets</span> <span class="val" id="r-tickets">—</span></div>
+        <div class="t-row"><span class="lbl">Original Price</span> <span class="val" id="r-original">—</span></div>
+        <div class="t-row"><span class="lbl">Discount Applied</span><span class="val" id="r-discount">—</span></div>
+        <div class="t-total">
+          <span class="t-lbl">Final Price</span>
+          <span class="t-amount" id="r-final">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  /* ══════════════════════════════════════════════════
+     ALL BUSINESS LOGIC — matches cinema_app.py exactly
+     No server needed. Open this file directly in browser.
+  ══════════════════════════════════════════════════ */
+
+  // Requirement 1: Movies tuple (as a frozen array)
+  const MOVIES = Object.freeze(["Avengers", "Frozen", "Batman", "SpiderMan", "Minions"]);
+
+  // Requirement 2: Ticket prices via if/else chain
+  function getTicketPrice(movie) {
+    if      (movie === "Avengers")  return 600;
+    else if (movie === "Frozen")    return 400;
+    else if (movie === "Batman")    return 500;
+    else if (movie === "SpiderMan") return 550;
+    else if (movie === "Minions")   return 350;
+    else                            return null;
+  }
+
+  // Requirement 3: Discount rules
+  function calculateDiscount(tickets, total) {
+    let pct, discount;
+    if (tickets >= 5) {
+      pct      = 15;
+      discount = total * 0.15;
+    } else if (tickets >= 3) {
+      pct      = 10;
+      discount = total * 0.10;
+    } else {
+      pct      = 0;
+      discount = 0;
+    }
+    return {
+      discount:    Math.round(discount * 100) / 100,
+      finalPrice:  Math.round((total - discount) * 100) / 100,
+      pct
+    };
+  }
+
+  // Posters map
+  const POSTERS = { Avengers:"🦸", Frozen:"❄️", Batman:"🦇", SpiderMan:"🕷️", Minions:"💛" };
+
+  // Currency formatter
+  const fmt = n => `₨${Number(n).toLocaleString("en-PK")}`;
+
+  /* ── Starfield ── */
+  (function buildStars() {
+    const container = document.getElementById("stars");
+    for (let i = 0; i < 80; i++) {
+      const s = document.createElement("div");
+      s.className = "star";
+      const size = Math.random() * 2 + .5;
+      s.style.cssText = `
+        left:${Math.random()*100}%;top:${Math.random()*100}%;
+        width:${size}px;height:${size}px;
+        --dur:${2 + Math.random()*4}s;
+        --delay:${-Math.random()*6}s;
+        --min-op:${.05 + Math.random()*.15};
+        --max-op:${.4 + Math.random()*.5};
+      `;
+      container.appendChild(s);
+    }
+  })();
+
+  /* ── Movie card ↔ dropdown sync ── */
+  document.querySelectorAll(".movie-card").forEach(card => {
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".movie-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      document.getElementById("sel-movie").value = card.dataset.movie;
+      clearError();
+    });
+  });
+
+  document.getElementById("sel-movie").addEventListener("change", function () {
+    document.querySelectorAll(".movie-card").forEach(c => {
+      c.classList.toggle("selected", c.dataset.movie === this.value);
+    });
+    clearError();
+  });
+
+  /* ── Helpers ── */
+  function showError(msg) {
+    document.getElementById("err-msg").textContent = msg;
+    document.getElementById("err-box").classList.add("show");
+    document.getElementById("receipt").classList.remove("show");
+  }
+  function clearError() {
+    document.getElementById("err-box").classList.remove("show");
+  }
+
+  /* ══════════════════════════════════════════════════
+     MAIN BOOKING LOGIC
+  ══════════════════════════════════════════════════ */
+  document.getElementById("btn-book").addEventListener("click", () => {
+    const movie   = document.getElementById("sel-movie").value.trim();
+    const tickets = parseInt(document.getElementById("sel-tickets").value);
+
+    clearError();
+    document.getElementById("receipt").classList.remove("show");
+
+    // Validate movie
+    if (!movie) {
+      showError("Please select a movie.");
+      return;
+    }
+
+    // Requirement 5: invalid movie check against array (mirrors tuple in Python)
+    if (!MOVIES.includes(movie)) {
+      showError("Sorry! This movie is not available.");
+      return;
+    }
+
+    // Validate ticket count
+    if (isNaN(tickets) || tickets < 1) {
+      showError("Please enter a valid number of tickets (minimum 1).");
+      return;
+    }
+    if (tickets > 20) {
+      showError("Maximum 20 tickets per booking.");
+      return;
+    }
+
+    // ── Calculate ──
+    const unitPrice     = getTicketPrice(movie);
+    const originalPrice = unitPrice * tickets;
+    const { discount, finalPrice, pct } = calculateDiscount(tickets, originalPrice);
+
+    // ── Populate receipt ──
+    document.getElementById("r-emoji").textContent   = POSTERS[movie] || "🎬";
+    document.getElementById("r-title").textContent   = movie;
+    document.getElementById("r-sub").textContent     = `${tickets} ticket${tickets > 1 ? "s" : ""} · ${pct > 0 ? pct + "% group discount" : "Standard rate"}`;
+    document.getElementById("r-movie").textContent   = movie;
+    document.getElementById("r-unit").textContent    = fmt(unitPrice);
+    document.getElementById("r-tickets").textContent = tickets;
+    document.getElementById("r-original").textContent = fmt(originalPrice);
+
+    const discEl = document.getElementById("r-discount");
+    if (discount > 0) {
+      discEl.textContent = `−${fmt(discount)} (${pct}% off)`;
+      discEl.className   = "val discount";
+    } else {
+      discEl.textContent = "No discount";
+      discEl.className   = "val no-disc";
+    }
+
+    document.getElementById("r-final").textContent = fmt(finalPrice);
+
+    // Show receipt
+    document.getElementById("receipt").classList.add("show");
+    setTimeout(() => document.getElementById("receipt").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  });
+
+  // Enter key on tickets input triggers booking
+  document.getElementById("sel-tickets").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("btn-book").click();
+  });
+</script>
+</body>
+</html>
